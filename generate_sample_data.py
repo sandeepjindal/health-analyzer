@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Sample data generator for testing without Garmin device
+Generates a CSV that matches Garmin export format
 """
 import sys
 import os
@@ -9,9 +10,11 @@ import pandas as pd
 from random import randint, uniform
 
 def generate_sample_csv():
-    """Generate sample CSV health data"""
+    """Generate sample CSV health data in Garmin format"""
     
-    # Generate 24 hours of health data
+    print("🔄 Generating sample Garmin health data...")
+    
+    # Generate 24 hours of health data (every 5 minutes)
     data = []
     base_time = datetime.now() - timedelta(days=1)
     
@@ -50,18 +53,29 @@ def generate_sample_csv():
             else:
                 stress = randint(20, 40)
             
+            # HRV (heart rate variability) - inversely related to stress
+            hrv = 100 - stress + randint(-20, 20)
+            hrv = max(10, min(200, hrv))  # Keep in realistic range
+            
             data.append({
-                'timestamp': timestamp.isoformat(),
-                'heart_rate': int(hr),
-                'stress_level': stress,
-                'body_battery': randint(30, 100)
+                'Timestamp': timestamp.isoformat(),
+                'Heart Rate': int(hr),
+                'Stress Level': stress,
+                'Body Battery': randint(30, 100),
+                'HRV': round(hrv, 1)
             })
     
     df = pd.DataFrame(data)
-    output_path = 'data/sample_health_data.csv'
     os.makedirs('data', exist_ok=True)
+    output_path = 'data/sample_health_data.csv'
     df.to_csv(output_path, index=False)
+    
     print(f"✅ Generated sample data: {output_path}")
+    print(f"   - Rows: {len(df)}")
+    print(f"   - Columns: {', '.join(df.columns)}")
+    print(f"\nPreview:")
+    print(df.head(10).to_string(index=False))
+    
     return output_path
 
 if __name__ == '__main__':
@@ -69,4 +83,6 @@ if __name__ == '__main__':
         generate_sample_csv()
     except Exception as e:
         print(f"❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)

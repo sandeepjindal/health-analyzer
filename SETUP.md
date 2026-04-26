@@ -47,7 +47,9 @@ Expected output:
  * Debug mode: on
 ```
 
-The API will be available at `http://localhost:5000`
+The API will be available at `http://localhost:5001`
+
+**Note**: Port 5000 is often used by Apple AirTunes on macOS, so we use 5001 instead.
 
 ### API Endpoints
 
@@ -173,9 +175,7 @@ python -u app.py
 
 **Solution:**
 ```bash
-# Change port in app.py
-# Find this line: app.run(debug=True, port=5000)
-# Change to: app.run(debug=True, port=5001)
+# The app already uses port 5001 (5000 conflicts with AirTunes on macOS)
 
 # Also update frontend API_BASE to match
 ```

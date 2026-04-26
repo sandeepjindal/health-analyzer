@@ -35,7 +35,7 @@ python app.py
 
 Expected output:
 ```
- * Running on http://localhost:5000
+ * Running on http://localhost:5001
  * Debug mode: on
 ```
 

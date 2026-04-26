@@ -67,52 +67,169 @@ class GarminParser:
             return None
     
     def parse_csv(self, filepath: str) -> Optional[HealthSnapshot]:
-        """Parse CSV export from Garmin Connect"""
+        """Parse CSV export from Garmin Connect - handles multiple formats"""
         try:
             df = pd.read_csv(filepath)
+            print(f"[DEBUG] CSV columns: {list(df.columns)}")
+            print(f"[DEBUG] CSV shape: {df.shape}")
+            print(f"[DEBUG] First row:\n{df.iloc[0].to_dict()}")
             
             heart_rate_data = []
             stress_data = []
             hrv_data = []
             activities = []
             
-            # Try to detect columns
-            if 'heart_rate' in df.columns or 'Heart Rate' in df.columns:
-                hr_col = 'heart_rate' if 'heart_rate' in df.columns else 'Heart Rate'
-                timestamp_col = None
-                for col in ['timestamp', 'Timestamp', 'time', 'Time', 'datetime']:
-                    if col in df.columns:
+            # Find timestamp column (case-insensitive, flexible matching)
+            timestamp_col = None
+            timestamp_patterns = ['timestamp', 'time', 'date', 'datetime', 'date_time', 'time_stamp']
+            for col in df.columns:
+                col_lower = col.lower().replace(' ', '').replace('_', '')
+                for pattern in timestamp_patterns:
+                    if pattern in col_lower:
                         timestamp_col = col
+                        print(f"[DEBUG] Found timestamp column: {col}")
                         break
-                
                 if timestamp_col:
-                    for _, row in df.iterrows():
-                        try:
-                            timestamp = pd.to_datetime(row[timestamp_col])
-                            bpm = int(row[hr_col])
-                            heart_rate_data.append(HeartRatePoint(timestamp, bpm))
-                        except:
-                            pass
+                    break
             
-            # Parse stress data if available
-            if 'stress_level' in df.columns or 'Stress' in df.columns:
-                stress_col = 'stress_level' if 'stress_level' in df.columns else 'Stress'
-                timestamp_col = None
-                for col in ['timestamp', 'Timestamp', 'time', 'Time', 'datetime']:
-                    if col in df.columns:
-                        timestamp_col = col
+            # Find heart rate columns
+            avg_hr_col = None
+            hr_patterns = ['avg hr', 'avg_hr', 'averagehr', 'heart rate']
+            for col in df.columns:
+                col_lower = col.lower().replace(' ', '').replace('_', '')
+                for pattern in hr_patterns:
+                    if pattern.replace(' ', '').replace('_', '') in col_lower:
+                        avg_hr_col = col
+                        print(f"[DEBUG] Found Avg HR column: {col}")
                         break
-                
-                if timestamp_col:
-                    for _, row in df.iterrows():
-                        try:
-                            timestamp = pd.to_datetime(row[timestamp_col])
-                            stress = int(row[stress_col])
-                            stress_data.append(StressPoint(timestamp, stress))
-                        except:
-                            pass
+                if avg_hr_col:
+                    break
             
-            if heart_rate_data or stress_data or hrv_data:
+            max_hr_col = None
+            max_hr_patterns = ['max hr', 'max_hr', 'maximumhr']
+            for col in df.columns:
+                col_lower = col.lower().replace(' ', '').replace('_', '')
+                for pattern in max_hr_patterns:
+                    if pattern.replace(' ', '').replace('_', '') in col_lower:
+                        max_hr_col = col
+                        print(f"[DEBUG] Found Max HR column: {col}")
+                        break
+                if max_hr_col:
+                    break
+            
+            # Find stress columns
+            avg_stress_col = None
+            stress_patterns = ['avg stress', 'avg_stress', 'averagestress', 'stress']
+            for col in df.columns:
+                col_lower = col.lower().replace(' ', '').replace('_', '')
+                for pattern in stress_patterns:
+                    if pattern.replace(' ', '').replace('_', '') in col_lower:
+                        avg_stress_col = col
+                        print(f"[DEBUG] Found Avg Stress column: {col}")
+                        break
+                if avg_stress_col:
+                    break
+            
+            max_stress_col = None
+            for col in df.columns:
+                col_lower = col.lower().replace(' ', '').replace('_', '')
+                if 'maxstress' in col_lower or ('max' in col_lower and 'stress' in col_lower):
+                    max_stress_col = col
+                    print(f"[DEBUG] Found Max Stress column: {col}")
+                    break
+            
+            # Find HRV column if exists
+            hrv_col = None
+            hrv_patterns = ['hrv', 'variability', 'rmssd']
+            for col in df.columns:
+                col_lower = col.lower().replace(' ', '').replace('_', '')
+                for pattern in hrv_patterns:
+                    if pattern in col_lower:
+                        hrv_col = col
+                        print(f"[DEBUG] Found HRV column: {col}")
+                        break
+                if hrv_col:
+                    break
+            
+            # Parse activities (when we have activity-level data)
+            if timestamp_col and (avg_hr_col or avg_stress_col):
+                print(f"[DEBUG] Parsing {len(df)} activity records")
+                for idx, row in df.iterrows():
+                    try:
+                        # Get timestamp
+                        timestamp = pd.to_datetime(row[timestamp_col])
+                        
+                        # Extract heart rate (use average)
+                        if avg_hr_col and pd.notna(row[avg_hr_col]):
+                            try:
+                                avg_hr = int(float(row[avg_hr_col]))
+                                max_hr = int(float(row[max_hr_col])) if max_hr_col and pd.notna(row[max_hr_col]) else avg_hr
+                                
+                                # Add activity
+                                title = row.get('Title', 'Activity') if 'Title' in df.columns else 'Activity'
+                                activity_type = row.get('Activity Type', 'Unknown') if 'Activity Type' in df.columns else 'Unknown'
+                                
+                                # Try to get duration
+                                duration_minutes = 0
+                                if 'Time' in df.columns and pd.notna(row['Time']):
+                                    time_str = str(row['Time'])
+                                    try:
+                                        parts = time_str.split(':')
+                                        duration_minutes = int(parts[0]) * 60 + int(parts[1]) + int(parts[2].split('.')[0]) // 60
+                                    except:
+                                        pass
+                                
+                                calories = 0
+                                if 'Calories' in df.columns and pd.notna(row['Calories']):
+                                    try:
+                                        calories = int(float(row['Calories']))
+                                    except:
+                                        pass
+                                
+                                activity = Activity(
+                                    name=title,
+                                    start_time=timestamp,
+                                    end_time=timestamp,
+                                    duration_minutes=duration_minutes,
+                                    calories=calories,
+                                    avg_hr=avg_hr,
+                                    max_hr=max_hr,
+                                    activity_type=activity_type
+                                )
+                                activities.append(activity)
+                                
+                                # Add to heart rate data
+                                heart_rate_data.append(HeartRatePoint(timestamp, avg_hr))
+                            except (ValueError, TypeError):
+                                pass
+                        
+                        # Extract stress data
+                        if avg_stress_col and pd.notna(row[avg_stress_col]):
+                            try:
+                                stress = int(float(row[avg_stress_col]))
+                                if 0 <= stress <= 100:
+                                    stress_data.append(StressPoint(timestamp, stress))
+                            except (ValueError, TypeError):
+                                pass
+                        
+                        # Extract HRV if available
+                        if hrv_col and pd.notna(row[hrv_col]):
+                            try:
+                                hrv = float(row[hrv_col])
+                                if hrv > 0:
+                                    hrv_data.append(HRVPoint(timestamp, hrv))
+                            except (ValueError, TypeError):
+                                pass
+                    
+                    except Exception as row_error:
+                        print(f"[DEBUG] Skipping row {idx}: {str(row_error)}")
+                        pass
+                
+                print(f"[DEBUG] Parsed: Activities={len(activities)}, HR={len(heart_rate_data)}, Stress={len(stress_data)}, HRV={len(hrv_data)}")
+            
+            # Return data if we found anything
+            if activities or heart_rate_data or stress_data or hrv_data:
+                print(f"[DEBUG] CSV parse successful!")
                 return HealthSnapshot(
                     date=datetime.now(),
                     heart_rate_data=heart_rate_data,
@@ -120,9 +237,13 @@ class GarminParser:
                     hrv_data=hrv_data,
                     activities=activities
                 )
+            
+            print(f"[ERROR] No usable data found. Available columns: {list(df.columns)}")
             return None
         except Exception as e:
-            print(f"Error parsing CSV: {e}")
+            print(f"[ERROR] Error parsing CSV: {e}")
+            import traceback
+            traceback.print_exc()
             return None
     
     def parse_fit(self, filepath: str) -> Optional[HealthSnapshot]:

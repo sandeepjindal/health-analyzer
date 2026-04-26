@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 import './App.css';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'http://localhost:5001/api';
 const COLORS = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#00f2fe'];
 
 function App() {
@@ -32,14 +32,33 @@ function App() {
 
     setLoading(true);
     try {
+      console.log('Uploading to:', `${API_BASE}/upload`);
       const response = await axios.post(`${API_BASE}/upload`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 30000  // 30 second timeout
       });
+      console.log('Upload response:', response.data);
       setData(response.data.data);
       setInsights(response.data.insights);
       setActiveTab('overview');
+      alert('✅ File uploaded successfully!');
     } catch (error) {
-      alert('Error uploading file: ' + error.message);
+      console.error('Upload error:', error);
+      let errorMessage = 'Error uploading file: ';
+      
+      if (error.response) {
+        // Server responded with error
+        errorMessage += error.response.data?.error || error.response.data?.message || `Server error: ${error.response.status}`;
+      } else if (error.request) {
+        // Request made but no response
+        errorMessage += 'No response from server. Is backend running on port 5000?';
+      } else {
+        // Other errors
+        errorMessage += error.message;
+      }
+      
+      console.error('Full error:', errorMessage);
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }

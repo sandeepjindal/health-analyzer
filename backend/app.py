@@ -49,16 +49,46 @@ def upload_file():
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
         
+        # Validate file extension
+        allowed_extensions = {'.tcx', '.csv', '.fit'}
+        file_ext = os.path.splitext(file.filename)[1].lower()
+        if file_ext not in allowed_extensions:
+            return jsonify({'error': f'Invalid file format. Allowed: {", ".join(allowed_extensions)}'}), 400
+        
         # Save file
         filename = datetime.now().strftime('%Y%m%d_%H%M%S_') + file.filename
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         
+        print(f"[DEBUG] File saved to: {filepath}")
+        
         # Parse file
-        data = parser.parse_file(filepath)
+        try:
+            data = parser.parse_file(filepath)
+            print(f"[DEBUG] Parse result: {type(data)}")
+        except Exception as parse_error:
+            print(f"[ERROR] Parser failed: {str(parse_error)}")
+            return jsonify({
+                'status': 'error',
+                'message': f'Failed to parse file: {str(parse_error)}'
+            }), 400
+        
+        if not data:
+            return jsonify({
+                'status': 'error',
+                'message': 'File parsed but contained no usable data'
+            }), 400
         
         # Analyze data
-        insights = analyzer.analyze(data)
+        try:
+            insights = analyzer.analyze(data)
+            print(f"[DEBUG] Analysis complete")
+        except Exception as analyze_error:
+            print(f"[ERROR] Analyzer failed: {str(analyze_error)}")
+            return jsonify({
+                'status': 'error',
+                'message': f'Failed to analyze data: {str(analyze_error)}'
+            }), 400
         
         return jsonify({
             'status': 'success',
@@ -67,9 +97,12 @@ def upload_file():
             'insights': insights
         })
     except Exception as e:
+        print(f"[ERROR] Unexpected error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'status': 'error',
-            'message': str(e)
+            'message': f'Server error: {str(e)}'
         }), 500
 
 
@@ -128,4 +161,5 @@ def health_check():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # Use port 5001 instead of 5000 (5000 often conflicts with AirTunes on macOS)
+    app.run(debug=True, port=5001)

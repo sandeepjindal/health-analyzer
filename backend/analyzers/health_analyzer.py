@@ -22,6 +22,15 @@ class HealthAnalyzer:
         """Run complete analysis"""
         self.load_data(data)
         
+        if not data:
+            return {
+                'error': 'No data to analyze',
+                'stress_analysis': {'error': 'No stress data available'},
+                'hrv_analysis': {'error': 'No HRV data available'},
+                'hr_patterns': {'error': 'No heart rate data available'},
+                'activity_summary': {'error': 'No activities available'}
+            }
+        
         return {
             'stress_analysis': self.analyze_stress_periods(),
             'hrv_analysis': self.analyze_hrv_trends(),
