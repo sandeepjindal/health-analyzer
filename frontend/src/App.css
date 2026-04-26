@@ -1,0 +1,133 @@
+/* App specific styles */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white !important;
+  margin-bottom: 20px;
+}
+
+.header h1,
+.header p {
+  color: white !important;
+}
+
+/* Ensure all section backgrounds are consistent */
+section {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Chart Container Styles */
+.chart-container {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 25px;
+  border-radius: 12px;
+  margin-bottom: 25px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.chart-container h3 {
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 1.2em;
+}
+
+.chart-container svg {
+  max-width: 100%;
+}
+
+/* Enhanced Zone Item Styles */
+.zone-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.zone-range {
+  font-size: 0.85em;
+  color: #999;
+  font-weight: 500;
+}
+
+.category-excellent {
+  color: #4caf50;
+  font-weight: 700;
+}
+
+.category-good {
+  color: #8bc34a;
+  font-weight: 700;
+}
+
+.category-average {
+  color: #ffc107;
+  font-weight: 700;
+}
+
+.category-poor,
+.category-below\ average {
+  color: #f44336;
+  font-weight: 700;
+}
+
+.recovery-recovering {
+  color: #4caf50;
+}
+
+.recovery-stable {
+  color: #2196f3;
+}
+
+.recovery-fatigued {
+  color: #f44336;
+}
+
+/* Enhanced responsive for small screens */
+@media (max-width: 640px) {
+  .upload-box {
+    gap: 10px;
+  }
+
+  .upload-box input,
+  .btn-primary {
+    width: 100%;
+  }
+
+  .stat-card {
+    padding: 15px;
+  }
+
+  .stat-value {
+    font-size: 1.5em;
+  }
+
+  .zones {
+    overflow-x: auto;
+  }
+
+  .zone-item {
+    min-width: 100%;
+  }
+
+  .chart-container {
+    padding: 15px;
+    margin-bottom: 15px;
+  }
+}
